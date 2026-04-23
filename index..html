@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Auth</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: #0d1117;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #c9d1d9;
+        }
+
+        /* ========== GITHUB LOADER ========== */
+        .github-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0d1117;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+
+        .github-loader.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .github-logo {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 24px;
+            animation: pulse 2s infinite;
+        }
+
+        .github-logo svg {
+            width: 100%;
+            height: 100%;
+            fill: #f0f6fc;
+        }
+
+        .progress-bar-container {
+            width: 280px;
+            height: 4px;
+            background: #21262d;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #58a6ff, #3fb950, #f0883e);
+            border-radius: 6px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 12px rgba(88, 166, 255, 0.5);
+        }
+
+        .loader-text {
+            color: #8b949e;
+            font-size: 14px;
+            margin-top: 16px;
+            letter-spacing: 0.5px;
+        }
+
+        @keyframes pulse {
+            0%,
+            100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.08);
+            }
+        }
+
+        .octicon-mark-github {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        /* ========== REGISTRATION CARD ========== */
+        .registration-container {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 32px;
+            width: 360px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            display: none;
+            text-align: center;
+        }
+
+        .registration-container.active {
+            display: block;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .reg-title {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #f0f6fc;
+        }
+
+        .reg-subtitle {
+            font-size: 14px;
+            color: #8b949e;
+            margin-bottom: 24px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #c9d1d9;
+            margin-bottom: 6px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 10px 14px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            color: #c9d1d9;
+            font-size: 15px;
+            outline: none;
+            transition: border 0.2s, box-shadow 0.2s;
+        }
+
+        .input-group input:focus {
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+        }
+
+        .input-group input::placeholder {
+            color: #484f58;
+        }
+
+        .btn-next {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #238636;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 8px auto 0;
+            transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+            box-shadow: 0 4px 14px rgba(35, 134, 54, 0.4);
+        }
+
+        .btn-next:hover {
+            background: #2ea043;
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(46, 160, 67, 0.5);
+        }
+
+        .btn-next:active {
+            transform: scale(0.96);
+        }
+
+        .btn-next svg {
+            width: 24px;
+            height: 24px;
+            fill: none;
+            stroke: white;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* ========== KEY MODAL ========== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .key-modal {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 24px;
+            width: 340px;
+            text-align: center;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+            animation: modalPop 0.3s ease;
+        }
+
+        @keyframes modalPop {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .key-display {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 14px 18px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 15px;
+            color: #58a6ff;
+            letter-spacing: 1px;
+            word-break: break-all;
+            margin: 16px 0;
+            user-select: all;
+        }
+
+        .btn-copy {
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s, border-color 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-copy:hover {
+            background: #30363d;
+            border-color: #8b949e;
+        }
+
+        .btn-copy.copied {
+            background: #238636;
+            border-color: #238636;
+            color: white;
+        }
+
+        .btn-logout {
+            display: block;
+            width: 100%;
+            margin-top: 12px;
+            background: transparent;
+            border: 1px solid #f8514960;
+            color: #f85149;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .btn-logout:hover {
+            background: #f8514915;
+            border-color: #f85149;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #f0f6fc;
+        }
+
+        .copied-toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #238636;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 3000;
+            opacity: 0;
+            transition: opacity 0.3s, bottom 0.3s;
+            pointer-events: none;
+        }
+
+        .copied-toast.show {
+            opacity: 1;
+            bottom: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ========== GITHUB LOADER ========== -->
+    <div class="github-loader" id="githubLoader">
+        <div class="github-logo">
+            <svg viewBox="0 0 16 16" class="octicon-mark-github">
+                <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+            </svg>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <p class="loader-text" id="loaderText">Подключение к GitHub...</p>
+    </div>
+
+    <!-- ========== REGISTRATION FORM ========== -->
+    <div class="registration-container" id="regContainer">
+        <h2 class="reg-title">Регистрация</h2>
+        <p class="reg-subtitle">Создайте аккаунт для продолжения</p>
+        <div class="input-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="input-group">
+            <label for="name">Имя пользователя</label>
+            <input type="text" id="name" placeholder="your-username" autocomplete="username">
+        </div>
+        <button class="btn-next" id="btnNext" title="Дальше">
+            <svg viewBox="0 0 24 24">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        </button>
+    </div>
+
+    <!-- ========== KEY MODAL ========== -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="key-modal">
+            <p class="modal-title">🔑 Ваш ключ доступа</p>
+            <div class="key-display" id="keyDisplay">THKLAUR-GETLAS-HACJ-61</div>
+            <button class="btn-copy" id="btnCopy">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span id="copyText">Скопировать</span>
+            </button>
+            <button class="btn-logout" id="btnLogout">Выйти</button>
+        </div>
+    </div>
+
+    <!-- ========== TOAST ========== -->
+    <div class="copied-toast" id="copiedToast">✅ Скопировано!</div>
+
+    <script>
+        // ========== GITHUB LOADER ==========
+        const githubLoader = document.getElementById('githubLoader');
+        const progressBar = document.getElementById('progressBar');
+        const loaderText = document.getElementById('loaderText');
+        const regContainer = document.getElementById('regContainer');
+
+        const loadingStages = [
+            { progress: 20, text: 'Подключение к GitHub...' },
+            { progress: 45, text: 'Проверка репозиториев...' },
+            { progress: 70, text: 'Синхронизация данных...' },
+            { progress: 90, text: 'Аутентификация...' },
+            { progress: 100, text: 'Готово! 🚀' },
+        ];
+
+        let currentStage = 0;
+
+        function simulateLoading() {
+            if (currentStage < loadingStages.length) {
+                const stage = loadingStages[currentStage];
+                progressBar.style.width = stage.progress + '%';
+                loaderText.textContent = stage.text;
+                currentStage++;
+                const delay = currentStage === loadingStages.length ? 500 : 700 + Math.random() * 600;
+                setTimeout(simulateLoading, delay);
+            } else {
+                // Загрузка завершена — скрываем лоадер, показываем регистрацию
+                setTimeout(() => {
+                    githubLoader.classList.add('hidden');
+                    regContainer.classList.add('active');
+                }, 400);
+            }
+        }
+
+        // Запуск симуляции загрузки
+        setTimeout(simulateLoading, 400);
+
+        // ========== REGISTRATION & KEY MODAL ==========
+        const btnNext = document.getElementById('btnNext');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const keyDisplay = document.getElementById('keyDisplay');
+        const btnCopy = document.getElementById('btnCopy');
+        const copyText = document.getElementById('copyText');
+        const copiedToast = document.getElementById('copiedToast');
+        const btnLogout = document.getElementById('btnLogout');
+        const emailInput = document.getElementById('email');
+        const nameInput = document.getElementById('name');
+
+        // Нажатие на круглую кнопку "Дальше"
+        btnNext.addEventListener('click', () => {
+            const email = emailInput.value.trim();
+            const name = nameInput.value.trim();
+
+            if (!email || !name) {
+                // Простая валидация — подсветка пустых полей
+                if (!email) emailInput.style.borderColor = '#f85149';
+                if (!name) nameInput.style.borderColor = '#f85149';
+                setTimeout(() => {
+                    emailInput.style.borderColor = '#30363d';
+                    nameInput.style.borderColor = '#30363d';
+                }, 1500);
+                return;
+            }
+
+            // Показываем модальное окно с ключом
+            modalOverlay.classList.add('active');
+        });
+
+        // Сброс подсветки при вводе
+        emailInput.addEventListener('input', () => {
+            emailInput.style.borderColor = '#30363d';
+        });
+        nameInput.addEventListener('input', () => {
+            nameInput.style.borderColor = '#30363d';
+        });
+
+        // Копирование ключа
+        btnCopy.addEventListener('click', () => {
+            const key = keyDisplay.textContent;
+            navigator.clipboard.writeText(key).then(() => {
+                // Визуальный фидбек на кнопке
+                btnCopy.classList.add('copied');
+                copyText.textContent = 'Скопировано!';
+                // Показываем тост
+                copiedToast.classList.add('show');
+                setTimeout(() => {
+                    copiedToast.classList.remove('show');
+                }, 2000);
+                setTimeout(() => {
+                    btnCopy.classList.remove('copied');
+                    copyText.textContent = 'Скопировать';
+                }, 1800);
+            }).catch(() => {
+                // Фоллбек для старых браузеров
+                const textarea = document.createElement('textarea');
+                textarea.value = key;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                btnCopy.classList.add('copied');
+                copyText.textContent = 'Скопировано!';
+                copiedToast.classList.add('show');
+                setTimeout(() => copiedToast.classList.remove('show'), 2000);
+                setTimeout(() => {
+                    btnCopy.classList.remove('copied');
+                    copyText.textContent = 'Скопировать';
+                }, 1800);
+            });
+        });
+
+        // Кнопка "Выйти" — закрывает сайт (вкладку/окно)
+        btnLogout.addEventListener('click', () => {
+            // Пытаемся закрыть окно (работает, если окно открыто через window.open)
+            if (window.opener) {
+                window.close();
+            } else {
+                // Иначе показываем сообщение и редиректим на about:blank
+                document.body.innerHTML = `
+                            <div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#0d1117;color:#c9d1d9;font-family:sans-serif;text-align:center;">
+                                <div>
+                                    <h2 style="margin-bottom:12px;">👋 Вы вышли из системы</h2>
+                                    <p style="color:#8b949e;">Вкладку можно закрыть.</p>
+                                </div>
+                            </div>
+                        `;
+                setTimeout(() => {
+                    window.location.href = 'about:blank';
+                }, 2000);
+            }
+        });
+
+        // Закрытие модального окна при клике вне его
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                modalOverlay.classList.remove('active');
+            }
+        });
+
+        // Enter на полях ввода тоже активирует кнопку "Дальше"
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && regContainer.classList.contains('active') && !modalOverlay.classList
+                .contains('active')) {
+                btnNext.click();
+            }
+        });
+    </script>
+</body>
+</html>
